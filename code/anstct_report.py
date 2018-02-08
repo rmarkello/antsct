@@ -159,6 +159,56 @@ def segmentation_to_files(*, segmentation, types=[2, 4]):
     return out_files
 
 
+def make_sst(sst_dir, temp_dir, out_dir):
+    """
+    """
+
+    T1w = (sst_dir / 'T_template0.nii.gz')
+    T1w_brain = (sst_dir / 'T_templateBrainExtractionBrain.nii.gz')
+    T1w_mask = (sst_dir / 'T_templateBrainExtractionMask.nii.gz')
+    T1w_seg = (sst_dir / 'T_templateBrainSegmentation.nii.gz')
+    T1w_to_MNI = (sst_dir / 'T_templateBrainNormalizedToTemplate.nii.gz')
+    MNI_brain = (temp_dir / 'template_brain.nii.gz')
+    MNI_mask = (temp_dir / 'template_brain_mask.nii.gz')
+
+    make_brain(anatomical=T1w.as_posix(),
+               mask=T1w_mask.as_posix(),
+               out_file=None)
+    make_segmentation(anatomical=T1w_brain.as_posix(),
+                      segmentation=T1w_seg.as_posix(),
+                      mask=T1w_mask.as_posix(),
+                      out_file=None)
+    make_registration(moving=T1w_to_MNI,
+                      fixed=MNI_brain,
+                      mask=MNI_mask,
+                      out_file=None)
+
+
+def make_visit(visit_dir, sst_dir, out_dir):
+    """
+    """
+
+    T1w = (visit_dir / '..' / 'aligned' / '*_T1w.nii.gz')
+    T1w_brain = (visit_dir / '*_T1wExtractedBrain0N4.nii.gz')
+    T1w_mask = (visit_dir / '*_T1wBrainExtractionMask.nii.gz')
+    T1w_seg = (visit_dir / '*_T1wBrainSegmentation.nii.gz')
+    T1w_to_SST = (visit_dir / '*_T1wBrainNormalizedToTemplate.nii.gz')
+    SST_brain = (sst_dir / 'T_templateBrainExtractionBrain.nii.gz')
+    SST_mask = (sst_dir / 'T_templateBrainExtractionMask.nii.gz')
+
+    make_brain(anatomical=T1w.as_posix(),
+               mask=T1w_mask.as_posix(),
+               out_file=None)
+    make_segmentation(anatomical=T1w_brain.as_posix(),
+                      segmentation=T1w_seg.as_posix(),
+                      mask=T1w_mask.as_posix(),
+                      out_file=None)
+    make_registration(moving=T1w_to_SST,
+                      fixed=SST_brain,
+                      mask=SST_mask,
+                      out_file=None)
+
+
 def main():
     """
     Generates reports from outputs of ANTs pipeline
@@ -166,22 +216,30 @@ def main():
 
     parser = argparse.ArgumentParser(description='Create visual reports')
 
-    parser.add_argument('-s', dest='subject_directory',
+    parser.add_argument('-s', dest='subj_dir',
                         required=True,
                         type=pathlib.Path,
-                        help='Subject directory (BIDS format)')
-    parser.add_argument('-t', dest='template_directory',
+                        help='Subject directory')
+    parser.add_argument('-t', dest='temp_dir',
                         required=True,
                         type=pathlib.Path,
                         help='Template directory used by ANTs')
-    parser.add_argument('-o', dest='output_directory',
+    parser.add_argument('-o', dest='out_dir',
                         required=False,
                         default=None,
                         help='Where report should be saved.')
 
     options = vars(parser.parse_args())
-    if options['output_directory'] is None:
-        options['output_directory'] = options['subject_directory'] / 'output'
+    sub = options['subj_dir'].resolve().name
+
+    # set output directory if not supplied
+    if options['out_dir'] is None:
+        options['out_dir'] = options['subj_dir'] / 'output'
+
+    # first let's make the SST brain mask, segmentation, registration to MNI
+    options['subj_dir'] = options['subj_dir'].resolve() / 'output'
+    sst_dir = options['subj_dir'] / f'{sub}_CTSingleSubjectTemplate'
+    make_sst(sst_dir, options['temp_dir'], options['out_dir'])
 
 
 if __name__ == '__main__':
