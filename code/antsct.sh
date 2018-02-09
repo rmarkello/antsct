@@ -17,6 +17,10 @@ Note if multimodal images are provided, they must be present for EVERY session
 for this, and tends to be more conservative (i.e., not including a modality if
 it thinks it isn't present across all sessions).
 
+This will output all the relevant files AND create an `fmriprep`-style report
+for visually inspecting the nonlinear registration and segementation. This will
+be saved as sub-XXX.html in the data directory.
+
 Usage:
 
     $ docker run --rm -v /path/to/data:/data:Z antsct -s sub-001
@@ -97,7 +101,7 @@ export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$threads
 for subject in "${SUBJECTS[@]}"; do
     SUBJ_DIR=/data/${subject}               # subject directory based on input
     OUTPUT_DIR=${SUBJ_DIR}/output           # where ALL output will live
-    ALIGN_DIR=${OUTPUT_DIR}/aligned         # where linearly coregistered data
+    ALIGN_DIR=${OUTPUT_DIR}/coreg           # where linearly coregistered data
     SUB=$( echo ${subject} | cut -d '-' -f2 )
 
     # make sure subject directory exists
@@ -128,7 +132,7 @@ for subject in "${SUBJECTS[@]}"; do
     # session and put all output in ${ALIGN_DIR}
     long_inputs=()
     for fixed in ${anatomicals[@]}; do
-        # copy T1w anatomical to "aligned" directory and add to inputs for LCT
+        # copy T1w anatomical to "coreg" directory and add to inputs for LCT
         cp -v ${fixed} ${ALIGN_DIR}
         long_inputs+=("${ALIGN_DIR}/$( basename ${fixed} )")
         # iterate through other modalities, appending to inputs for LCT, and
@@ -194,7 +198,7 @@ for subject in "${SUBJECTS[@]}"; do
                 -o ${OUTPUT_DIR}/sub-${SUB}_CT                                \
                 ${long_inputs[@]}"
     # save the command to a txt file for posterity
-    echo ${command} | tee ${OUTPUT_DIR}/sub-${SUB}_antslct_command.txt
+    echo ${command} | tee ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
     ${command}
 
     # now we need to create the Jacobian images from GroupTemplateToSubjectWarp
@@ -220,4 +224,6 @@ for subject in "${SUBJECTS[@]}"; do
             -t ${warp_dir}/sub-${SUB}*_T1wSubjectToGroupTemplateWarp.nii.gz   \
             -o ${OUTPUT_DIR}/${anat}_jacobian.nii.gz
     done
+    py=`which python`
+    $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUTPUT_DIR}
 done

@@ -3,6 +3,8 @@
 import argparse
 import os
 import pathlib
+import re
+import jinja2
 import nibabel as nib
 from niworkflows.viz.utils import (compose_view, plot_segs,
                                    plot_registration, cuts_from_bbox)
@@ -70,7 +72,7 @@ def make_segmentation(*, anatomical, segmentation, mask, out_file):
 
     compose_view(
         plot_segs(image_nii=anatomical,
-                  seg_niis=segs,
+                  seg_niis=[mask] + segs,
                   bbox_nii=mask,
                   out_file='reports.svg',
                   masked=False,
@@ -106,7 +108,7 @@ def make_registration(*, moving, fixed, mask, out_file):
     """
 
     if not out_file.endswith('.svg'): out_file += '.svg'
-    cuts = cuts_from_bbox(mask, cuts=7)
+    cuts = cuts_from_bbox(nib.load(mask), cuts=7)
 
     compose_view(
         plot_registration(nib.load(fixed),
@@ -125,7 +127,7 @@ def make_registration(*, moving, fixed, mask, out_file):
     return out_file
 
 
-def segmentation_to_files(*, segmentation, types=[2, 4]):
+def segmentation_to_files(segmentation, types=[2, 4]):
     """
     Converts single `segmentation` into multiple files
 
@@ -161,52 +163,90 @@ def segmentation_to_files(*, segmentation, types=[2, 4]):
 
 def make_sst(sst_dir, temp_dir, out_dir):
     """
+    Parameters
+    ----------
+    sst_dir : pathlib.Path
+    temp_dir : pathlib.Path
+    out_dir : pathlib.Path
     """
 
-    T1w = (sst_dir / 'T_template0.nii.gz')
-    T1w_brain = (sst_dir / 'T_templateBrainExtractionBrain.nii.gz')
-    T1w_mask = (sst_dir / 'T_templateBrainExtractionMask.nii.gz')
-    T1w_seg = (sst_dir / 'T_templateBrainSegmentation.nii.gz')
-    T1w_to_MNI = (sst_dir / 'T_templateBrainNormalizedToTemplate.nii.gz')
-    MNI_brain = (temp_dir / 'template_brain.nii.gz')
-    MNI_mask = (temp_dir / 'template_brain_mask.nii.gz')
+    T1w = sst_dir / 'T_template0.nii.gz'
+    T1w_mask = sst_dir / 'T_templateBrainExtractionMask.nii.gz'
+    T1w_seg = sst_dir / 'T_templateBrainSegmentation.nii.gz'
+    T1w_to_MNI = sst_dir / 'T_templateBrainNormalizedToTemplate.nii.gz'
+    MNI_brain = temp_dir / 'template_brain.nii.gz'
+    MNI_mask = temp_dir / 'template_brain_mask.nii.gz'
 
-    make_brain(anatomical=T1w.as_posix(),
-               mask=T1w_mask.as_posix(),
-               out_file=None)
-    make_segmentation(anatomical=T1w_brain.as_posix(),
-                      segmentation=T1w_seg.as_posix(),
-                      mask=T1w_mask.as_posix(),
-                      out_file=None)
-    make_registration(moving=T1w_to_MNI,
-                      fixed=MNI_brain,
-                      mask=MNI_mask,
-                      out_file=None)
+    seg = make_segmentation(anatomical=T1w.as_posix(),
+                            segmentation=T1w_seg.as_posix(),
+                            mask=T1w_mask.as_posix(),
+                            out_file=(out_dir / 'sst_seg.svg').as_posix())
+    reg = make_registration(moving=T1w_to_MNI.as_posix(),
+                            fixed=MNI_brain.as_posix(),
+                            mask=MNI_mask.as_posix(),
+                            out_file=(out_dir / 'sst_reg.svg').as_posix())
+
+    return seg, reg
 
 
 def make_visit(visit_dir, sst_dir, out_dir):
     """
+    visit_dir : pathlib.Path
+    sst_dir : pathlib.Path
+    out_dir : pathlib.Path
     """
 
-    T1w = (visit_dir / '..' / 'aligned' / '*_T1w.nii.gz')
-    T1w_brain = (visit_dir / '*_T1wExtractedBrain0N4.nii.gz')
-    T1w_mask = (visit_dir / '*_T1wBrainExtractionMask.nii.gz')
-    T1w_seg = (visit_dir / '*_T1wBrainSegmentation.nii.gz')
-    T1w_to_SST = (visit_dir / '*_T1wBrainNormalizedToTemplate.nii.gz')
-    SST_brain = (sst_dir / 'T_templateBrainExtractionBrain.nii.gz')
-    SST_mask = (sst_dir / 'T_templateBrainExtractionMask.nii.gz')
+    base = '_'.join(visit_dir.name.split('_')[:-1])
+    ses = re.search('ses-(\d+)', base).group()
 
-    make_brain(anatomical=T1w.as_posix(),
-               mask=T1w_mask.as_posix(),
-               out_file=None)
-    make_segmentation(anatomical=T1w_brain.as_posix(),
-                      segmentation=T1w_seg.as_posix(),
-                      mask=T1w_mask.as_posix(),
-                      out_file=None)
-    make_registration(moving=T1w_to_SST,
-                      fixed=SST_brain,
-                      mask=SST_mask,
-                      out_file=None)
+    T1w = visit_dir / '..' / 'coreg' / f'{base}.nii.gz'
+    T1w_mask = visit_dir / f'{base}BrainExtractionMask.nii.gz'
+    T1w_seg = visit_dir / f'{base}BrainSegmentation.nii.gz'
+    T1w_to_SST = visit_dir / f'{base}BrainNormalizedToTemplate.nii.gz'
+    SST_brain = sst_dir / 'T_templateBrainExtractionBrain.nii.gz'
+    SST_mask = sst_dir / 'T_templateBrainExtractionMask.nii.gz'
+
+    seg = make_segmentation(anatomical=T1w.as_posix(),
+                            segmentation=T1w_seg.as_posix(),
+                            mask=T1w_mask.as_posix(),
+                            out_file=(out_dir / f'{ses}_seg.svg').as_posix())
+    reg = make_registration(moving=T1w_to_SST.as_posix(),
+                            fixed=SST_brain.as_posix(),
+                            mask=SST_mask.as_posix(),
+                            out_file=(out_dir / f'{ses}_reg.svg').as_posix())
+
+    return seg, reg
+
+
+def prep_for_jinja(images):
+    """
+    Prepares svg `images` for jinja rendering
+
+    Parameters
+    ----------
+    images : list-of-str
+
+    Returns
+    -------
+    outputs : list-of-tuple
+    """
+
+    from textwrap import dedent
+
+    xmlcontent = dedent("""\
+    <object type="image/svg+xml" data="./{0}" \
+    class="reportlet">filename:{0}</object>\
+    """)
+
+    outputs = []
+    for im in images:
+        subject = 'sub-' + re.findall('/sub-(\d+)/', im)[0]
+        fbase = os.path.basename(im)
+        fig_dir = re.findall(f'/{subject}/(.*)/{fbase}', im)[0]
+        content = xmlcontent.format(os.path.join(subject, fig_dir, fbase))
+        outputs.append((im, content))
+
+    return outputs
 
 
 def main():
@@ -219,27 +259,40 @@ def main():
     parser.add_argument('-s', dest='subj_dir',
                         required=True,
                         type=pathlib.Path,
-                        help='Subject directory')
+                        help='Subject output directory')
     parser.add_argument('-t', dest='temp_dir',
                         required=True,
                         type=pathlib.Path,
                         help='Template directory used by ANTs')
     parser.add_argument('-o', dest='out_dir',
                         required=False,
-                        default=None,
+                        default=argparse.SUPPRESS,
+                        type=pathlib.Path,
                         help='Where report should be saved.')
 
     options = vars(parser.parse_args())
-    sub = options['subj_dir'].resolve().name
-
-    # set output directory if not supplied
-    if options['out_dir'] is None:
-        options['out_dir'] = options['subj_dir'] / 'output'
+    sub, subj_dir = options['subj_dir'].parts[-2], options['subj_dir']
+    temp_dir = options['temp_dir'].resolve()
+    out_dir = options.get('out_dir', subj_dir).resolve() / 'figures'
+    os.makedirs(out_dir, exist_ok=True)
 
     # first let's make the SST brain mask, segmentation, registration to MNI
-    options['subj_dir'] = options['subj_dir'].resolve() / 'output'
-    sst_dir = options['subj_dir'] / f'{sub}_CTSingleSubjectTemplate'
-    make_sst(sst_dir, options['temp_dir'], options['out_dir'])
+    sst_dir = (subj_dir / f'{sub}_CTSingleSubjectTemplate').resolve()
+    sst_seg, sst_reg = make_sst(sst_dir, temp_dir, out_dir)
+    images = [sst_seg, sst_reg]
+
+    # now let's make the individual visits
+    for v in sorted([f for f in subj_dir.glob(f'{sub}*T1w_*') if f.is_dir()]):
+        v_seg, v_reg = make_visit(v.resolve(), sst_dir, out_dir)
+        images.extend([v_seg, v_reg])
+    images = prep_for_jinja(images)
+
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath='code'),
+                             trim_blocks=True,
+                             lstrip_blocks=True)
+    report_tpl = env.get_template('report.tpl')
+    report_render = report_tpl.render(images=images)
+    with open(f'{sub}.html', 'w') as fp: fp.write(report_render)
 
 
 if __name__ == '__main__':

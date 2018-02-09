@@ -7,12 +7,18 @@ specs = {
     'check_urls': False,
     'instructions': [
         ('base', 'ubuntu:16.04'),
+        # wget for segment_mni.sh and bc for ANTs
         ('install', ['bc', 'wget']),
         ('ants', {'version': '2.2.0'}),
         ('instruction', 'RUN mkdir /data /opt/data'),
+        # copy over MICCAI label data and MNI template
         ('copy', ['data/miccai', '/opt/data/miccai']),
         ('copy', ['data/mni_template', '/opt/data/mni_template']),
+        # copy over code for making MNI template and generating reports
         ('copy', ['code/segment_mni.sh', '/opt/segment_mni.sh']),
+        ('copy', ['code/report.tpl', '/opt/report.tpl']),
+        ('copy', ['code/report.py', '/opt/report.py'])
+        # create miniconda environment
         ('miniconda', {
             'miniconda_version': '4.3.31',
             'env_name': 'py36',
@@ -46,6 +52,7 @@ specs = {
             ],
             'activate': True
         }),
+        # copy pipeline code and set as entrypoint
         ('copy', ['code/antsct.sh', '/opt/antsct.sh']),
         ('entrypoint', '/opt/antsct.sh')
     ]
