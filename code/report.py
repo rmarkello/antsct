@@ -287,7 +287,7 @@ def main():
         images.extend([v_seg, v_reg])
     images = prep_for_jinja(images)
 
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath='code'),
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath='/opt'),
                              trim_blocks=True,
                              lstrip_blocks=True)
     report_tpl = env.get_template('report.tpl')
