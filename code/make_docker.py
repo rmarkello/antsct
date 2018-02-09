@@ -10,8 +10,9 @@ specs = {
         # wget for segment_mni.sh and bc for ANTs
         ('install', ['bc', 'wget']),
         ('ants', {'version': '2.2.0'}),
+        ('instruction', 'RUN mkdir /data /opt/data'),
         # copy over MICCAI label data and MNI template
-        ('copy', ['data', '/opt/']),
+        ('copy', ['data/', '/opt/data/']),
         # create miniconda environment
         ('miniconda', {
             'miniconda_version': '4.3.31',
@@ -45,8 +46,7 @@ specs = {
                 'svgutils==0.3.0'
             ]
         }),
-        ('instruction', 'RUN mkdir /data'),
-        ('copy', ['code/*', '/opt/']),
+        ('copy', ['code/', '/opt/']),
         ('entrypoint', '/opt/antsct.sh')
     ]
 }

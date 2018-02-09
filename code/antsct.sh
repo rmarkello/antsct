@@ -224,6 +224,6 @@ for subject in "${SUBJECTS[@]}"; do
             -t ${warp_dir}/sub-${SUB}*_T1wSubjectToGroupTemplateWarp.nii.gz   \
             -o ${OUTPUT_DIR}/${anat}_jacobian.nii.gz
     done
-    conda activate antsct; py=`which python`
+    source activate antsct; py=`which python`
     $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUTPUT_DIR}
 done
