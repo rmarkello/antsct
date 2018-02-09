@@ -6,7 +6,7 @@
 # This should only need to be done ONCE and ideally will have already been
 # done during the creation of the Singularity container.
 
-WORK_DIR=/data; cd ${WORK_DIR}
+WORK_DIR=/opt/data; cd ${WORK_DIR}
 MALF_DIR=${WORK_DIR}/miccai
 DATA_DIR=${WORK_DIR}/mni_2009c_asym
 OUTPUT_DIR=${WORK_DIR}/mni_template
