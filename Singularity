@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: ##username##/antsct:v1
+From: ##username##/##tag##:##version##
 
 %runscript
     exec /opt/antsct.sh "$@"
