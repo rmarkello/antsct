@@ -1,25 +1,14 @@
 #!/usr/bin/env bash
 
-TAG=antsct
-VERSION=v1
-
 # create the Dockerfile and build the container
-python code/make_docker.py
-docker build -t ${TAG} .
-rm Dockerfile
-
-# push the container to DockerHub
-docker login
-dockerhubuser=$( docker info | grep Username | cut -d ' ' -f2 )
-docker tag $( docker images ${TAG}:latest -q ) ${dockerhubuser}/${TAG}:${VERISON}
-docker push ${dockerhubuser}/${TAG}:${VERISON}
-
-# make the Singularity recipe file (so that it can be run and accept commands)
-cp Singularity Singularity.bak
-sed -i "s/##username##/${dockerhubuser}/g" Singularity
-sed -i "/##tag##/${TAG}/g" Singularity
-sed -i "/##version##/${VERSION}" Singularity
-
-# build the Singularity container
-sudo singularity build antsct.simg Singularity
-rm Singularity; mv Singularity.bak Singularity
+python make_docker.py
+# spin up local registry
+docker run -d -p 5000:5000 --restart=always --name registry registry:2
+# tag and push image to local registry
+docker tag antsct localhost:5000/antsct
+docker push localhost:5000/antsct
+# create singularity image from local registry; require singularity >=2.4.2
+SINGULARITY_NOHTTPS=true singularity pull docker://localhost:5000/antsct
+# remove registry and docker image
+REG=$( docker ps -alq ); docker stop ${REG}; docker rm ${REG}
+docker rmi -f antsct

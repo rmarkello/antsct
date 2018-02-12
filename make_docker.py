@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-from neurodocker import Dockerfile
+from neurodocker import Dockerfile, DockerImage
+
+data = "https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46"
+code = "https://ndownloader.figshare.com/files/10454380?private_link=96f47406f4fd364b5241"
 
 specs = {
     'pkg_manager': 'apt',
@@ -10,9 +13,11 @@ specs = {
         # wget for segment_mni.sh and bc for ANTs
         ('install', ['bc', 'wget']),
         ('ants', {'version': '2.2.0'}),
-        ('instruction', 'RUN mkdir /data /opt/data'),
-        # copy over MICCAI label data and MNI template
-        ('copy', ['data/', '/opt/data/']),
+        # download data and code
+        ('instruction', 'RUN mkdir /data && '
+                        f'curl -sSL --retry 5 {data} | tar zx -C /opt && '
+                        f'curl -sSL --retry 5 {code} | tar zx -C /opt'),
+        ('entrypoint', '/opt/antsct.sh'),
         # create miniconda environment
         ('miniconda', {
             'miniconda_version': '4.3.31',
@@ -45,11 +50,10 @@ specs = {
                 'niworkflows==0.3.1',
                 'svgutils==0.3.0'
             ]
-        }),
-        ('copy', ['code/', '/opt/']),
-        ('entrypoint', '/opt/antsct.sh')
+        })
     ]
 }
 
 if __name__ == '__main__':
-    Dockerfile(specs).save()
+    df = Dockerfile(specs)
+    DockerImage(df).build(tag='antsct', log_console=True)

@@ -197,7 +197,7 @@ for subject in "${SUBJECTS[@]}"; do
                 ${atlases}                                                    \
                 -o ${OUTPUT_DIR}/sub-${SUB}_CT                                \
                 ${long_inputs[@]}"
-    # save the command to a txt file for posterity
+    # save the command to a txt file for posterity and then run it
     echo ${command} | tee ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
     ${command}
 
@@ -224,6 +224,8 @@ for subject in "${SUBJECTS[@]}"; do
             -t ${warp_dir}/sub-${SUB}*_T1wSubjectToGroupTemplateWarp.nii.gz   \
             -o ${OUTPUT_DIR}/${anat}_jacobian.nii.gz
     done
+
+    # generate html report
     source activate antsct; py=`which python`
     $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUTPUT_DIR}
 done
