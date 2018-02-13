@@ -11,4 +11,4 @@ docker push localhost:5000/antsct
 SINGULARITY_NOHTTPS=true singularity pull docker://localhost:5000/antsct
 # remove registry and docker image
 REG=$( docker ps -alq ); docker stop ${REG}; docker rm ${REG}
-docker rmi -f antsct
+docker rmi -f antsct localhost:5000/antsct

@@ -201,30 +201,49 @@ for subject in "${SUBJECTS[@]}"; do
     echo ${command} | tee ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
     ${command}
 
-    # now we need to create the Jacobian images from GroupTemplateToSubjectWarp
-    # files and then move them into template space
-    # these will be DBM (jacobian determinant) images where a POSITIVE value
-    # indicates relative SUBJECT atrophy (and a negative value indicates
-    # relative subject expansion) as compared to the TEMPLATE BRAIN
+    # now we need to create the Jacobian images
+    # we only want the nonlinear warps, but we need the SST --> visit warp to
+    # be in the same space as the template --> SST warp, so we have to do some
+    # rather annoying coercion
     anatomicals=( $( for f in ${anatomicals[@]}; do basename ${f%%.*}; done ) )
     suffixes=( `eval echo {0..$( echo "${#anatomicals[@]}-1" | bc )}` )
+    SST_DIR=${OUTPUT_DIR}/sub-${SUB}_CTSingleSubjectTemplate
+    # affine for transforming SST --> visit warps into template space
+    sst_to_group_mat=${SST_DIR}/T_templateSubjectToTemplate0GenericAffine.mat
+    # template --> SST warp to combine with SST --> visit warp
+    group_to_sst_war=${SST_DIR}/T_templateTemplateToSubject0Warp.nii.gz
     for index in ${!anatomicals[*]}; do
         # get input files and whatnot
         anat=${anatomicals[$index]}; suff=${suffixes[$index]}
         warp_dir=${OUTPUT_DIR}/${anat}_${suff}
-        warp=${warp_dir}/${anat}GroupTemplateToSubjectWarp.nii.gz
-        jacobian=${warp%%.*}_jacobian.nii.gz
-        # output log Jacobian; do not use geometric jacobian calculation
-        CreateJacobianDeterminantImage 3 ${warp} ${jacobian} 1 0
-        # transform jacobian into group template space !
+        warp=${warp_dir}/${anat}TemplateToSubject0Warp.nii.gz
+        jacobian=${OUTPUT_DIR}/${anat}_jacobian.nii.gz
+        # convert displacement field into vector images and warp to template
+        ConvertImage 3 ${warp} ${warp/.nii.gz/} 10
+        for j in xvec yvec zvec; do
+            antsApplyTransforms                                               \
+                -r ${TEMP_DIR}/template.nii.gz                                \
+                -i ${warp/.nii.gz/}${j}.nii.gz                                \
+                -o ${warp/.nii.gz/}${j}.nii.gz                                \
+                -t ${sst_to_group_mat} -v 1
+        done
+        # convert vectors into displacement field and combine nonlinear warps
+        ConvertImage 3 ${warp/.nii.gz/} ${warp/.nii.gz/_tempspace.nii.gz} 9
+        rm ${warp/.nii.gz/}{x,y,z}vec.nii.gz
+        combo_warp=${warp_dir}/${anat}_nonlinearwarps.nii.gz
         antsApplyTransforms                                                   \
             -d 3 -v 1                                                         \
-            -i ${jacobian}                                                    \
             -r ${TEMP_DIR}/template.nii.gz                                    \
-            -t ${warp_dir}/sub-${SUB}*_T1wSubjectToGroupTemplateWarp.nii.gz   \
-            -o ${OUTPUT_DIR}/${anat}_jacobian.nii.gz
+            -o [${combo_warp},1]                                              \
+            -t ${warp/.nii.gz/_tempspace.nii.gz}                              \
+            -t ${group_to_sst_war}
+        # create ouput jacobian determinant image (log and geometric)
+        # these will be images where a POSITIVE value indicates relative
+        # subject atrophy, and a NEGATIVE value indicates relative subject
+        # expansion as compared to the TEMPLATE BRAIN. images will be in
+        # TEMPLATE SPACE, and thus comparable across individuals
+        CreateJacobianDeterminantImage 3 ${combo_warp} ${jacobian} 1 1
     done
-
     # generate html report
     source activate antsct; py=`which python`
     $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUTPUT_DIR}
