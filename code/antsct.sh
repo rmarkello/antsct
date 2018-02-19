@@ -222,10 +222,11 @@ for subject in "${SUBJECTS[@]}"; do
         ConvertImage 3 ${warp} ${warp/.nii.gz/} 10
         for j in xvec yvec zvec; do
             antsApplyTransforms                                               \
+                -d 3 -v 1                                                     \
                 -r ${TEMP_DIR}/template.nii.gz                                \
                 -i ${warp/.nii.gz/}${j}.nii.gz                                \
                 -o ${warp/.nii.gz/}${j}.nii.gz                                \
-                -t ${sst_to_group_mat} -v 1
+                -t ${sst_to_group_mat}
         done
         # convert vectors into displacement field and combine nonlinear warps
         ConvertImage 3 ${warp/.nii.gz/} ${warp/.nii.gz/_tempspace.nii.gz} 9
