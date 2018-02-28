@@ -285,13 +285,23 @@ def main():
     for v in sorted([f for f in subj_dir.glob(f'{sub}*T1w_*') if f.is_dir()]):
         v_seg, v_reg = make_visit(v.resolve(), sst_dir, out_dir)
         images.extend([v_seg, v_reg])
+
+    # prepare the images to be put into jinja template
     images = prep_for_jinja(images)
+
+    # finally, grab the ANTS command to add to the report
+    antsfp = subj_dir / f'${sub}_antscommand.txt'
+    if antsfp.exists():
+        with open(antsfp, 'r') as src:
+            antscmd = src.read()
+    else:
+        antscmd = ''
 
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath='/opt'),
                              trim_blocks=True,
                              lstrip_blocks=True)
     report_tpl = env.get_template('report.tpl')
-    report_render = report_tpl.render(images=images)
+    report_render = report_tpl.render(images=images, antscmd=antscmd)
     with open(f'{sub}.html', 'w') as fp: fp.write(report_render)
 
 

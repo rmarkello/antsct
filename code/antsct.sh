@@ -3,29 +3,37 @@
 function Usage {
     cat << USAGE
 
-antsct runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data organized in
-BIDS format (see bids.neuroimaging.io for more information). Once complete, it
-uses the output warp files to generate Jacobian Determinant images.
+Description:
 
-This script assumes that each provided subject has AT LEAST one T1w anatomical
-image; more images can be provided (either longitudinally or multimodally) and
-will be utilized in processing (see https://github.com/ANTsX/ANTs/ for more
-info).
+    antsct runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data
+    organized in BIDS format (see bids.neuroimaging.io for more information).
+    Once complete, it uses the output warp files to generate Jacobian
+    determinant images.
 
-Note if multimodal images are provided, they must be present for EVERY session
-(assuming there are also multiple sessions). This script only does minor checks
-for this, and tends to be more conservative (i.e., not including a modality if
-it thinks it isn't present across all sessions).
+    This script assumes that each provided subject has AT LEAST one T1w
+    anatomical image; more images can be provided (either longitudinally or
+    multimodally) and will be utilized in processing (see
+    https://github.com/ANTsX/ANTs/ for more info).
 
-This will output all the relevant files AND create an fmriprep-style report
-for visually inspecting the nonlinear registration and segementation. This will
-be saved as sub-XXX.html in the data directory.
+    Note if multimodal images are provided, they must be present for every
+    session (assuming there are also multiple sessions) for them to be used.
+    This script only does minor checks for this, and tends to be more
+    conservative (i.e., not including a modality if it thinks it isn't present
+    across all sessions).
+
+    This will output all the relevant files AND create an fmriprep-style report
+    for visually inspecting the nonlinear registration and segementation. This
+    will be saved as sub-XXX.html in the subject output directory.
 
 Usage:
 
-    $ docker run --rm -v /path/to/data:/data:Z antsct -s sub-001
+    $ docker_opts="--rm -v /path/to/data:/data:ro -v /path/to/output:/output"
+    $ docker run \${docker_opts} antsct -s sub-001
+
         OR
-    $ singularity run --bind /path/to/data:/data:rw antsct.simg -s sub-001
+
+    $ singularity_opts="-B /path/to/data:/data:ro -B /path/to/output:/output"
+    $ singularity run \${singularity_opts} antsct.simg -s sub-001
 
 Required arguments:
 
@@ -35,8 +43,11 @@ Required arguments:
                                 times) the pipeline will iterate over subjects
                                 and be run on each *serially*.
 
-Optional arguments:
+ Optional arguments:
 
+    -o: output directory        Output directory. Assumes /output by default,
+                                but alternative can be specified. Either way,
+                                make sure you bind
     -c: number of cpu cores     Determines how many CPU cores to try and use
                                 with PEXEC (parallel execution on localhost).
                                 In order to maximize speed, this program will
@@ -46,21 +57,23 @@ Optional arguments:
                                 here (to a minimum of 1). Default: 2
 
 USAGE
-    exit 1
+    exit 0
 }
 
-export ANTSPATH=/opt/ants/                     # path to ANTS directory
-export TEMP_DIR=/opt/data/mni_template         # MNI152 2009c with priors
-export MALF_DIR=/opt/data/miccai               # Mindboggle labelled brains
-MODALITIES=( T2w PD FLAIR )                    # possible non-T1w anatomicals
-SUBJECTS=(); CORES=2
+export ANTSPATH=/opt/ants/                           # path to ANTS directory
+export TEMP_DIR=/opt/data/mni_template               # MNI152 2009c with priors
+export MALF_DIR=/opt/data/miccai                     # Mindboggle brains
+export OUT_DIR=/output                               # default output directory
+MODALITIES=( T2w PD FLAIR echo-1_PDT2 echo-2_PDT2 )  # possible non-T1w anats
+CORES=2                                              # default number of CPUs
+SUBJECTS=()
 
 # get arguments
 if [[ $# -lt 2 ]]; then
     Usage >&2
     exit 1
 else
-    while getopts "c:h:s:" OPT; do
+    while getopts "c:h:o:s:" OPT; do
         case $OPT in
                 c)
             CORES=$OPTARG
@@ -68,6 +81,9 @@ else
                 h)
             Usage >&2
             exit 0
+            ;;
+                o)
+            OUT_DIR=$OPTARG
             ;;
                 s)
             SUBJECTS+=("$OPTARG")
@@ -93,16 +109,16 @@ if [ ! -z "${SLURM_NTASKS}" ]; then
 fi
 
 # set the ITK GLOBAL THREADS for multithreading of antsRegistration
-threads=$( echo "${TOT_CORES}/${CORES}" | bc )
-if [ $threads -lt 1 ]; then threads=1; fi
-export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$threads
+THREADS=$( echo "${TOT_CORES}/${CORES}" | bc )
+if [ ${THREADS} -lt 1 ]; then THREADS=1; fi
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=${THREADS}
 
 # iterate through provided subjects
 for subject in "${SUBJECTS[@]}"; do
     SUBJ_DIR=/data/${subject}               # subject directory based on input
-    OUTPUT_DIR=${SUBJ_DIR}/output           # where ALL output will live
+    OUTPUT_DIR=${OUT_DIR}/${subject}        # where ALL output will live
     ALIGN_DIR=${OUTPUT_DIR}/coreg           # where linearly coregistered data
-    SUB=$( echo ${subject} | cut -d '-' -f2 )
+    SUB=${subject/sub-/}
 
     # make sure subject directory exists
     if [ ! -d ${SUBJ_DIR} ]; then echo "${SUBJ_DIR} doesn't exist."; exit 1; fi
@@ -135,6 +151,7 @@ for subject in "${SUBJECTS[@]}"; do
         # copy T1w anatomical to "coreg" directory and add to inputs for LCT
         cp -v ${fixed} ${ALIGN_DIR}
         long_inputs+=("${ALIGN_DIR}/$( basename ${fixed} )")
+
         # iterate through other modalities, appending to inputs for LCT, and
         # register to T1w image for given session
         for dtype in "${MODALITIES[@]}"; do
@@ -142,18 +159,22 @@ for subject in "${SUBJECTS[@]}"; do
             # if there aren't, we can't use this file otherwise the CT pipeline
             # will be thrown off from an uneven number of modalities/inputs
             n_dtype=$( find ${ses_nums[@]} -name "*${dtype}.nii.gz" | wc -l )
-            if [ ! "${n_dtype}" -eq "${#anatomicals[@]}" ]; then continue; fi
+            if [ "${n_dtype}" -lt "${#anatomicals[@]}" ]; then continue; fi
+
             # get filename for moving image and skip if it doesn't exist
             # this should hypothetically never get triggered due to the above
             # but gonna keep it here for posterity's sake
             moving=${fixed/T1w/${dtype}};
             if [ ! -f ${moving} ]; then continue; fi
+
             # create output name and add to input string for LCT pipeline
             output=${ALIGN_DIR}/$( basename ${moving%%.*} )
             long_inputs+=("${output}.nii.gz")
+
             # if registration was already run, don't do it again...
             if [ -f ${output}.nii.gz ]; then
                 echo "${fixed##*/} already exists; skipping this registration."
+
             # run the rigid body registration to the T1w; this is basically
             # the same as a call to antsRegistrationSyN but w/the output names
             # specified a bit differently than that script allows
@@ -182,8 +203,10 @@ for subject in "${SUBJECTS[@]}"; do
         atlas=$( echo $lab | cut -d '_' -f1,2 )_BrainCerebellum.nii.gz
         atlases="${atlases} -a ${atlas} -l ${lab}"
     done
+
     # get number of modalities based on number of T1ws and number of inputs
     num_mod=$( echo "${#long_inputs[@]}/${#anatomicals[@]}" | bc )
+
     # run longitudinal cortical thickness pipeline using all modalities
     # this can take a couple of day, so...do something else for a while?
     command="antsLongitudinalCorticalThickness.sh                             \
@@ -197,27 +220,31 @@ for subject in "${SUBJECTS[@]}"; do
                 ${atlases}                                                    \
                 -o ${OUTPUT_DIR}/sub-${SUB}_CT                                \
                 ${long_inputs[@]}"
+
     # save the command to a txt file for posterity and then run it
-    echo ${command} | tee ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
+    echo ${command} >> ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
     ${command}
 
     # now we need to create the Jacobian images
     # we only want the nonlinear warps, but we need the SST --> visit warp to
     # be in the same space as the template --> SST warp, so we have to do some
-    # rather annoying coercion
+    # rather annoying transformation
     anatomicals=( $( for f in ${anatomicals[@]}; do basename ${f%%.*}; done ) )
     suffixes=( `eval echo {0..$( echo "${#anatomicals[@]}-1" | bc )}` )
-    SST_DIR=${OUTPUT_DIR}/sub-${SUB}_CTSingleSubjectTemplate
+    sst_dir=${OUTPUT_DIR}/sub-${SUB}_CTSingleSubjectTemplate
+
     # affine for transforming SST --> visit warps into template space
-    sst_to_group_mat=${SST_DIR}/T_templateSubjectToTemplate0GenericAffine.mat
+    sst_to_group_mat=${sst_dir}/T_templateSubjectToTemplate0GenericAffine.mat
+
     # template --> SST warp to combine with SST --> visit warp
-    group_to_sst_war=${SST_DIR}/T_templateTemplateToSubject0Warp.nii.gz
+    group_to_sst_war=${sst_dir}/T_templateTemplateToSubject0Warp.nii.gz
+
     for index in ${!anatomicals[*]}; do
         # get input files and whatnot
         anat=${anatomicals[$index]}; suff=${suffixes[$index]}
         warp_dir=${OUTPUT_DIR}/${anat}_${suff}
         warp=${warp_dir}/${anat}TemplateToSubject0Warp.nii.gz
-        jacobian=${OUTPUT_DIR}/${anat}_jacobian.nii.gz
+
         # convert displacement field into vector images and warp to template
         ConvertImage 3 ${warp} ${warp/.nii.gz/} 10
         for j in xvec yvec zvec; do
@@ -228,6 +255,7 @@ for subject in "${SUBJECTS[@]}"; do
                 -o ${warp/.nii.gz/}${j}.nii.gz                                \
                 -t ${sst_to_group_mat}
         done
+
         # convert vectors into displacement field and combine nonlinear warps
         ConvertImage 3 ${warp/.nii.gz/} ${warp/.nii.gz/_tempspace.nii.gz} 9
         rm ${warp/.nii.gz/}{x,y,z}vec.nii.gz
@@ -238,13 +266,24 @@ for subject in "${SUBJECTS[@]}"; do
             -o [${combo_warp},1]                                              \
             -t ${warp/.nii.gz/_tempspace.nii.gz}                              \
             -t ${group_to_sst_war}
+
         # create ouput jacobian determinant image (log and geometric)
         # these will be images where a POSITIVE value indicates relative
         # subject atrophy, and a NEGATIVE value indicates relative subject
         # expansion as compared to the TEMPLATE BRAIN. images will be in
         # TEMPLATE SPACE, and thus comparable across individuals
+        jacobian=${OUTPUT_DIR}/${anat}_jacobian.nii.gz
         CreateJacobianDeterminantImage 3 ${combo_warp} ${jacobian} 1 1
+
+        # let's also drag along the cortical thickness to group space
+        antsApplyTransforms                                                   \
+            -d 3 -v 1                                                         \
+            -r ${TEMP_DIR}/template.nii.gz                                    \
+            -i ${warp_dir}/${anat}CorticalThickness.nii.gz                    \
+            -o ${OUTPUT_DIR}/${anat}_corticalthickness.nii.gz                 \
+            -t ${warp_dir}/${anat}SubjectToGroupTemplateWarp.nii.gz
     done
+
     # generate html report
     source activate antsct; py=`which python`
     $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUTPUT_DIR}

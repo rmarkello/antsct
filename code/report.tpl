@@ -20,6 +20,7 @@ body {
 <body>
 
 <h1>Registrations and segmentation from ANTs</h1>
+{% antscmd %}
 {% for image in images %}
     <div class="elem-filename">
         Filename: {{ image.0 }}
