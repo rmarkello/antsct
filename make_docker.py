@@ -3,7 +3,7 @@
 from neurodocker import Dockerfile, DockerImage
 
 data = "https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46"
-code = "https://ndownloader.figshare.com/files/10473499?private_link=96f47406f4fd364b5241"
+code = "https://ndownloader.figshare.com/files/10610875?private_link=96f47406f4fd364b5241"
 
 specs = {
     'pkg_manager': 'apt',
