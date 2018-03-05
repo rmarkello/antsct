@@ -271,7 +271,7 @@ def main():
                         help='Where report should be saved.')
 
     options = vars(parser.parse_args())
-    sub, subj_dir = options['subj_dir'].parts[-2], options['subj_dir']
+    sub, subj_dir = options['subj_dir'].name, options['subj_dir']
     temp_dir = options['temp_dir'].resolve()
     out_dir = options.get('out_dir', subj_dir).resolve() / 'figures'
     os.makedirs(out_dir, exist_ok=True)
