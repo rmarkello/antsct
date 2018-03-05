@@ -231,19 +231,9 @@ def prep_for_jinja(images):
     outputs : list-of-tuple
     """
 
-    from textwrap import dedent
-
-    xmlcontent = dedent("""\
-    <object type="image/svg+xml" data="./{0}" \
-    class="reportlet">filename:{0}</object>\
-    """)
-
     outputs = []
     for im in images:
-        subject = 'sub-' + re.findall('/sub-(\d+)/', im)[0]
-        fbase = os.path.basename(im)
-        fig_dir = re.findall(f'/{subject}/(.*)/{fbase}', im)[0]
-        content = xmlcontent.format(os.path.join(subject, fig_dir, fbase))
+        with open(im, 'r') as src: content = src.read()
         outputs.append((im, content))
 
     return outputs
@@ -268,41 +258,53 @@ def main():
                         required=False,
                         default=argparse.SUPPRESS,
                         type=pathlib.Path,
-                        help='Where report should be saved.')
+                        help='Where report should be saved')
 
     options = vars(parser.parse_args())
     sub, subj_dir = options['subj_dir'].name, options['subj_dir']
     temp_dir = options['temp_dir'].resolve()
-    out_dir = options.get('out_dir', subj_dir).resolve() / 'figures'
-    os.makedirs(out_dir, exist_ok=True)
+    fig_dir = subj_dir.resolve() / 'figures'
+    out_dir = options.get('out_dir', subj_dir.parent).resolve() / 'reports'
+    fig_dir.mkdir(parents=True, exist_ok=True)
 
     # first let's make the SST brain mask, segmentation, registration to MNI
     sst_dir = (subj_dir / f'{sub}_CTSingleSubjectTemplate').resolve()
-    sst_seg, sst_reg = make_sst(sst_dir, temp_dir, out_dir)
+    sst_seg, sst_reg = make_sst(sst_dir, temp_dir, fig_dir)
     images = [sst_seg, sst_reg]
 
     # now let's make the individual visits
     for v in sorted([f for f in subj_dir.glob(f'{sub}*T1w_*') if f.is_dir()]):
-        v_seg, v_reg = make_visit(v.resolve(), sst_dir, out_dir)
+        v_seg, v_reg = make_visit(v.resolve(), sst_dir, fig_dir)
         images.extend([v_seg, v_reg])
 
     # prepare the images to be put into jinja template
     images = prep_for_jinja(images)
 
     # finally, grab the ANTS command to add to the report
-    antsfp = subj_dir / f'${sub}_antscommand.txt'
+    antsfp = subj_dir / f'{sub}_antscommand.txt'
     if antsfp.exists():
         with open(antsfp, 'r') as src:
             antscmd = src.read()
+        # do a little formatting to get it to print with line breaks
+        add = '<br>&nbsp;&nbsp;&nbsp;&nbsp;{0}'
+        for to_split in ['-d', '-e', '-p', '-f', '-g', '-a', '-o']:
+            antscmd = add.format(to_split).join(antscmd.split(f' {to_split}'))
+        add = add.format('/')
+        antscmd = ('z' + add).join(antscmd.split('z /'))
+        antscmd = ('_CT' + add).join(antscmd.split('_CT /'))
     else:
         antscmd = ''
 
+    # render the html with jinja
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(searchpath='/opt'),
                              trim_blocks=True,
                              lstrip_blocks=True)
     report_tpl = env.get_template('report.tpl')
-    report_render = report_tpl.render(images=images, antscmd=antscmd)
-    with open(f'{sub}.html', 'w') as fp: fp.write(report_render)
+    report_render = report_tpl.render(images=images, antscmd=[antscmd])
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with open(out_dir / f'{sub}.html', 'w') as fp:
+        fp.write(report_render)
 
 
 if __name__ == '__main__':

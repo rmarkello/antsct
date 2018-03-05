@@ -20,12 +20,17 @@ body {
 <body>
 
 <h1>Registrations and segmentation from ANTs</h1>
-{% antscmd %}
+<h3>Command call</h3>
+{{ antscmd.0 }}
+<br><br>
 {% for image in images %}
-    <div class="elem-filename">
+    <h3><div class="elem-filename">
         Filename: {{ image.0 }}
+    </div></h3>
+    <div class="elem-image">
+        {{ image.1 }}
     </div>
-    <div class="elem-image">{{ image.1 }}</div><br>
+    <br><br>
 {% endfor %}
 
 </body>

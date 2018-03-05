@@ -2,8 +2,9 @@
 
 from neurodocker import Dockerfile, DockerImage
 
-data = "https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46"
-code = "https://ndownloader.figshare.com/files/10610875?private_link=96f47406f4fd364b5241"
+figshare = "https://ndownloader.figshare.com/files/"
+data = f"{figshare}10454170?private_link=5d9349701c771e8d8d46"
+code = f"{figshare}10651669?private_link=96f47406f4fd364b5241"
 
 specs = {
     'pkg_manager': 'apt',
@@ -12,11 +13,14 @@ specs = {
         ('base', 'ubuntu:16.04'),
         # wget for segment_mni.sh and bc for ANTs
         ('install', ['bc', 'wget']),
-        ('ants', {'version': '2.2.0'}),
+        # not actually V 2.2.0
+        ('ants', {'version': '2.2.0',
+                  'use_binaries': False,
+                  'git_hash': '30eabeb002818ce999e2d368920435c457456d47'}),
         # download data and code
-        ('instruction', 'RUN mkdir /data && '
-                        f'curl -sSL --retry 5 {data} | tar zx -C /opt && '
-                        f'curl -sSL --retry 5 {code} | tar zx -C /opt'),
+        ('instruction', 'RUN mkdir /data \\\n'
+                        f'    && curl -sSL --retry 5 {data} | tar zx -C /opt \\\n'
+                        f'    && curl -sSL --retry 5 {code} | tar zx -C /opt'),
         ('entrypoint', '/opt/antsct.sh'),
         # create miniconda environment
         ('miniconda', {
@@ -56,4 +60,5 @@ specs = {
 
 if __name__ == '__main__':
     df = Dockerfile(specs)
-    DockerImage(df).build(tag='antsct', log_console=True)
+    df.save()
+    # DockerImage(df).build(tag='antsct', log_console=True)

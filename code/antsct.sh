@@ -286,5 +286,5 @@ for subject in "${SUBJECTS[@]}"; do
 
     # generate html report
     source activate antsct; py=`which python`
-    $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUTPUT_DIR}
+    $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUT_DIR}
 done
