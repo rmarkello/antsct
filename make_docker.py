@@ -60,5 +60,4 @@ specs = {
 
 if __name__ == '__main__':
     df = Dockerfile(specs)
-    df.save()
-    # DockerImage(df).build(tag='antsct', log_console=True)
+    DockerImage(df).build(tag='antsct', log_console=True)
