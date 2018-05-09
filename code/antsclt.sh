@@ -5,7 +5,7 @@ function Usage {
 
 Description:
 
-    antsct runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data
+    antsclt runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data
     organized in BIDS format (see bids.neuroimaging.io for more information).
     Once complete, it uses the output warp files to generate Jacobian
     determinant images.
@@ -28,12 +28,12 @@ Description:
 Usage:
 
     $ docker_opts="--rm -v /path/to/data:/data:ro -v /path/to/output:/output"
-    $ docker run \${docker_opts} antsct -s sub-001
+    $ docker run \${docker_opts} antsclt -s sub-001
 
         OR
 
     $ singularity_opts="-B /path/to/data:/data:ro -B /path/to/output:/output"
-    $ singularity run \${singularity_opts} antsct.simg -s sub-001
+    $ singularity run \${singularity_opts} antsclt.simg -s sub-001
 
 Required arguments:
 
@@ -285,6 +285,6 @@ for subject in "${SUBJECTS[@]}"; do
     done
 
     # generate html report
-    source activate antsct; py=`which python`
+    source activate antsclt; py=`which python`
     $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUT_DIR}
 done

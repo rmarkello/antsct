@@ -30,7 +30,8 @@ def make_brain(*, anatomical, mask, out_file):
         Where svg was saved
     """
 
-    if not out_file.endswith('.svg'): out_file += '.svg'
+    if not out_file.endswith('.svg'):
+        out_file += '.svg'
 
     compose_view(
         plot_segs(image_nii=anatomical,
@@ -67,7 +68,8 @@ def make_segmentation(*, anatomical, segmentation, mask, out_file):
         Where svg was saved
     """
 
-    if not out_file.endswith('.svg'): out_file += '.svg'
+    if not out_file.endswith('.svg'):
+        out_file += '.svg'
     segs = segmentation_to_files(segmentation)
 
     compose_view(
@@ -81,7 +83,8 @@ def make_segmentation(*, anatomical, segmentation, mask, out_file):
         out_file=out_file
     )
 
-    for fname in segs: os.remove(fname)
+    for fname in segs:
+        os.remove(fname)
 
     return out_file
 
@@ -107,7 +110,8 @@ def make_registration(*, moving, fixed, mask, out_file):
         Where svg was saved
     """
 
-    if not out_file.endswith('.svg'): out_file += '.svg'
+    if not out_file.endswith('.svg'):
+        out_file += '.svg'
     cuts = cuts_from_bbox(nib.load(mask), cuts=7)
 
     compose_view(
@@ -233,7 +237,8 @@ def prep_for_jinja(images):
 
     outputs = []
     for im in images:
-        with open(im, 'r') as src: content = src.read()
+        with open(im, 'r') as src:
+            content = src.read()
         outputs.append((im, content))
 
     return outputs
