@@ -1,3 +1,4 @@
 sub-*
 data/
 *.tar.gz
+*simg
