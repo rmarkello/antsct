@@ -1,4 +1,4 @@
-# antsclt
+# ANTS Longitudinal Cortical Thickness with visual QC and extra outputs
 
 **UNDER CONSTRUCTION**
 

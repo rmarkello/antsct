@@ -5,7 +5,7 @@ function Usage {
 
 Description:
 
-    antsclt runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data
+    antslct runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data
     organized in BIDS format (see bids.neuroimaging.io for more information).
     Once complete, it uses the output warp files to generate Jacobian
     determinant images.
@@ -28,12 +28,12 @@ Description:
 Usage:
 
     $ docker_opts="--rm -v /path/to/data:/data:ro -v /path/to/output:/output"
-    $ docker run \${docker_opts} antsclt -s sub-001
+    $ docker run \${docker_opts} antslct -s sub-001
 
         OR
 
     $ singularity_opts="-B /path/to/data:/data:ro -B /path/to/output:/output"
-    $ singularity run \${singularity_opts} antsclt.simg -s sub-001
+    $ singularity run \${singularity_opts} antslct.simg -s sub-001
 
 Required arguments:
 
@@ -47,7 +47,8 @@ Required arguments:
 
     -o: output directory        Output directory. Assumes /output by default,
                                 but alternative can be specified. Either way,
-                                make sure you bind
+                                make sure you bind something to this or else
+                                your data won't be saved!
     -c: number of cpu cores     Determines how many CPU cores to try and use
                                 with PEXEC (parallel execution on localhost).
                                 In order to maximize speed, this program will
@@ -225,6 +226,11 @@ for subject in "${SUBJECTS[@]}"; do
     echo ${command} >> ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
     ${command}
 
+    # if the command errored we don't want to continue (we likely can't!)
+    if [[ $? -ne 0 ]]; then
+        exit 1
+    fi
+
     # now we need to create the Jacobian images
     # we only want the nonlinear warps, but we need the SST --> visit warp to
     # be in the same space as the template --> SST warp, so we have to do some
@@ -285,6 +291,6 @@ for subject in "${SUBJECTS[@]}"; do
     done
 
     # generate html report
-    source activate antsclt; py=`which python`
+    source activate antslct; py=`which python`
     $py /opt/report.py -s ${OUTPUT_DIR} -t ${TEMP_DIR} -o ${OUT_DIR}
 done
