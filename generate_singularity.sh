@@ -7,7 +7,7 @@
 # and then used to run the ANTs longitudinal cortical thickness pipeline.
 
 read -r -d '' ENTRYPOINT << EOM
-#!/usr/bin/env bash
+#!/bin/bash
 . /opt/freesurfer/FreeSurferEnv.sh
 /opt/antslct.sh "\${@}"
 EOM
@@ -27,9 +27,6 @@ docker run --rm kaczmarj/neurodocker:0.4.0 generate singularity               \
       create_env=${tag}                                                       \
       yaml_file=/opt/environment.yml                                          \
       activate=true                                                           \
-    --freesurfer                                                              \
-      version=6.0.0-min                                                       \
-      install_path="/opt/freesurfer"                                          \
     --ants version=${ants_ver} method=source install_path="/opt/ants"         \
     --copy code/antslct.sh /opt                                               \
     --copy code/report.py /opt                                                \
