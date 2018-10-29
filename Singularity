@@ -47,7 +47,7 @@ conda config --system --prepend channels conda-forge
 conda config --system --set auto_update_conda false
 conda config --system --set show_channel_urls true
 sync && conda clean -tipsy && sync
-conda env create -q --name  --file /opt/environment.yml
+conda env create -q --name antslct --file /opt/environment.yml
 rm -rf ~/.cache/pip/*
 
 
@@ -120,7 +120,7 @@ echo '{
 \n    [
 \n      "miniconda",
 \n      {
-\n        "create_env": "",
+\n        "create_env": "antslct",
 \n        "yaml_file": "/opt/environment.yml",
 \n        "activate": true
 \n      }

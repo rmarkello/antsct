@@ -24,7 +24,7 @@ docker run --rm kaczmarj/neurodocker:0.4.0 generate singularity               \
     --run "curl -sSL --retry 5 ${data} | tar zx -C /opt"                      \
     --copy environment.yml /opt/environment.yml                               \
     --miniconda                                                               \
-      create_env=${tag}                                                       \
+      create_env=antslct                                                      \
       yaml_file=/opt/environment.yml                                          \
       activate=true                                                           \
     --ants version=${ants_ver} method=source install_path="/opt/ants"         \
