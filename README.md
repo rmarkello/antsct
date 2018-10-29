@@ -1,5 +1,7 @@
 # Modified ANTS Longitudinal Cortical Thickness pipeline
 
+[![https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg](https://www.singularity-hub.org/static/img/hosted-singularity--hub-%23e32929.svg)](https://singularity-hub.org/collections/1842)
+
 This repository contains code for running the [ANTs longitudinal cortical thickness pipeline](https://www.biorxiv.org/content/early/2018/08/16/170209) on a [BIDS](bids.neuroimaging.io) dataset.
 
 ## Table of contents
