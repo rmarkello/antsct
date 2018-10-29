@@ -14,6 +14,7 @@ This repository contains code for running the [ANTs longitudinal cortical thickn
 * [Description of files](#description-of-files)
 
 ## Description
+
 In many respects this code is similar to the [ANTs BIDS-App](https://github.com/BIDS-Apps/antsCorticalThickness), which is designed to automatically run the ANTs cortical thickness pipeline on a formatted BIDS datasets. However, this pipeline has a few notable differences from the BIDS App, including:
 
 1. Automated use of additional data modalities as inputs to the pipeline, as available
@@ -40,7 +41,7 @@ singularity run -B /path/to/bids/data:/data                                   \
                 -s subject_ids_to_process
 ```
 
-If you have access to an HPC cluster with a SLURM job scheduler check out [`antslct_batch.sh`](antslct_batch.sh) for an example script to run the pipeline. 
+If you have access to an HPC cluster with a SLURM job scheduler check out [`antslct_batch.sh`](antslct_batch.sh) for an example script to run the pipeline.
 
 If you'd prefer to build the Singularity container locally, you can do so with:
 
@@ -126,7 +127,6 @@ This code will generate all of the "normal" ANTsLongitudinalCorticalThickness.sh
 * `environment.yml`: File specifying the [`conda`](https://conda.io/docs/) environment required for running `code/report.py` within the Singularity container`
 * `generate_singularity.sh`: Code used to generate the Singularity recipe file. This script uses [`neurodocker`](https://github.com/kaczmarj/neurodocker), so running it will require that you have [Docker](https://www.docker.com/) installed
 
-
 `code/`  
 
 * `antslct.sh`: The primary script that is called when the Singularity image is invoked with `singularity run`
@@ -136,4 +136,3 @@ This code will generate all of the "normal" ANTsLongitudinalCorticalThickness.sh
 `data/`
 
 * `segment_mni.sh`: Code used to generate an ANTs-ready group template from the original MNI152 ICBM nonlinear asymmetric 2009c atlas. The MNI atlas does not come with the required tissue priors that ANTs expects (CSF, cortical gray matter, white matter, subcortical gray matter, brainstem, cerebellum), so this script uses a combination of ANTs tools and the provided atlas files to create them. It should not need to be re-run as the output files are available on [figshare]("https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46").
-
