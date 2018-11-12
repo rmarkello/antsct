@@ -49,7 +49,7 @@ If you'd prefer to build the Singularity container locally, you can do so with:
 sudo singularity build antslct.simg Singularity
 ```
 
-Note that this requires root permissions, so the first option is preferred.
+Note that this requires administrator privileges, whereas the first option does not.
 
 ## Usage
 

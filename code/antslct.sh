@@ -234,7 +234,7 @@ for subject in "${SUBJECTS[@]}"; do
     # now we need to create the Jacobian images
     # we only want the nonlinear warps, but we need the SST --> visit warp to
     # be in the same space as the template --> SST warp, so we have to do some
-    # rather annoying transformation
+    # rather annoying transformations...
     anatomicals=( $( for f in ${anatomicals[@]}; do basename ${f%%.*}; done ) )
     suffixes=( `eval echo {0..$( echo "${#anatomicals[@]}-1" | bc )}` )
     sst_dir=${OUTPUT_DIR}/sub-${SUB}_CTSingleSubjectTemplate
@@ -288,6 +288,15 @@ for subject in "${SUBJECTS[@]}"; do
             -i ${warp_dir}/${anat}CorticalThickness.nii.gz                    \
             -o ${OUTPUT_DIR}/${anat}_corticalthickness.nii.gz                 \
             -t ${warp_dir}/${anat}SubjectToGroupTemplateWarp.nii.gz
+
+        # and finally, copy out the composite warp files and brain segmentation
+        # any other files can be manually pulled from the session directories
+        cp ${warp_dir}/${anat}SubjectToGroupTemplateWarp.nii.gz \
+           ${OUTPUT_DIR}/${anat}_subjectotemplatewarp.nii.gz
+        cp ${warp_dir}/${anat}GroupTemplateToSubjectWarp.nii.gz \
+           ${OUTPUT_DIR}/${anat}_templatetosubjectwarp.nii.gz
+        cp ${warp_dir}/${anat}BrainSegmentation.nii.gz \
+           ${OUTPUT_DIR}/${anat}_brainsegmentation.nii.gz
     done
 
     # generate html report

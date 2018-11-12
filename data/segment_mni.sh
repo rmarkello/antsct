@@ -1,10 +1,24 @@
 #!/usr/bin/env bash
 #
-# Downloads MNI ICBM152 2009c 1x1x1 asymmetrical template and creates priors as
-# required by ANTS using the priors/brain mask provided with the template as a
-# basis and then improving (?) them with the MICCAI labelled images.
-# This should only need to be done ONCE and ideally will have already been
-# done during the creation of the Singularity container.
+# Description:
+#
+#     Downloads MNI ICBM152 2009c 1x1x1 asymmetrical template and creates
+#     priors as required by ANTS using the priors/brain mask provided with the
+#     template as a basis and then (hopefully?) improving them with the MICCAI
+#     labelled images.
+#
+#     This should only need to be done ONCE, but it will take a while. As such,
+#     if you are using `generate_singularity.sh` or pulling a Singularity
+#     container from Singularity-Hub, then this will have already been done for
+#     you!
+#
+#     If you _really_ want to run it again, just so you know what's going on,
+#     then check out "Usage" instructions, below.
+#
+# Usage:
+#
+#     singularity exec antslct.simg bash /opt/data/segment_mni.sh
+#
 
 WORK_DIR=/opt/data; cd ${WORK_DIR}
 MALF_DIR=${WORK_DIR}/miccai

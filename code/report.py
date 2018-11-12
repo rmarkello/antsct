@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Functions for generating QC images and an HTML report for outputs from the
+ANTs longitudinal cortical thickness pipeline
+"""
 
 import argparse
 import os
@@ -70,6 +74,7 @@ def make_segmentation(*, anatomical, segmentation, mask, out_file):
 
     if not out_file.endswith('.svg'):
         out_file += '.svg'
+
     segs = segmentation_to_files(segmentation)
 
     compose_view(
@@ -157,10 +162,11 @@ def segmentation_to_files(segmentation, types=[2, 4]):
     out_files = []
 
     for lab in types:
-        out_files.append(segmentation.replace('.nii.gz', f'_seg{lab}.nii.gz'))
+        out_fname = segmentation.replace('.nii.gz', f'_seg{lab}.nii.gz')
         seg = np.zeros_like(labels)
         seg[labels == lab] = lab
-        img.__class__(seg, img.affine, img.header).to_filename(out_files[-1])
+        img.__class__(seg, img.affine, img.header).to_filename(out_fname)
+        out_files += [out_fname]
 
     return out_files
 
@@ -251,15 +257,15 @@ def main():
 
     parser = argparse.ArgumentParser(description='Create visual reports')
 
-    parser.add_argument('-s', dest='subj_dir',
+    parser.add_argument('-s', '--subj_dir', dest='subj_dir',
                         required=True,
                         type=pathlib.Path,
                         help='Subject output directory')
-    parser.add_argument('-t', dest='temp_dir',
+    parser.add_argument('-t', '--temp_dir', dest='temp_dir',
                         required=True,
                         type=pathlib.Path,
                         help='Template directory used by ANTs')
-    parser.add_argument('-o', dest='out_dir',
+    parser.add_argument('-o', '--out_dir', dest='out_dir',
                         required=False,
                         default=argparse.SUPPRESS,
                         type=pathlib.Path,
@@ -290,7 +296,7 @@ def main():
     if antsfp.exists():
         with open(antsfp, 'r') as src:
             antscmd = src.read()
-        # do a little formatting to get it to print with line breaks
+        # do a little formatting to get the command to print with line breaks
         add = '<br>&nbsp;&nbsp;&nbsp;&nbsp;{0}'
         for to_split in ['-d', '-e', '-p', '-f', '-g', '-a', '-o']:
             antscmd = add.format(to_split).join(antscmd.split(f' {to_split}'))
