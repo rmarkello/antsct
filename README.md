@@ -107,7 +107,7 @@ Required arguments:
                                 In order to maximize speed, this program will
                                 check to see the number of available cores and
                                 set ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS equal
-                                to # available cores / the arugment provided
+                                to # available cores / the argument provided
                                 here (to a minimum of 1). Default: 2
 ```
 
@@ -124,8 +124,8 @@ This code will generate all of the "normal" ANTsLongitudinalCorticalThickness.sh
 `./`
 
 * `antslct_batch.sh`: Example code for submitting a job to a HPC cluster with a SLURM job scheduler. Note that using this requires a few edits&mdash;check the script for comments
-* `environment.yml`: File specifying the [`conda`](https://conda.io/docs/) environment required for running `code/report.py` within the Singularity container`
-* `generate_singularity.sh`: Code used to generate the Singularity recipe file. This script uses [`neurodocker`](https://github.com/kaczmarj/neurodocker), so running it will require that you have [Docker](https://www.docker.com/) installed
+* `environment.yml`: File specifying the [`conda`](https://conda.io/docs/) environment required for running `code/report.py` within the Singularity container
+* `generate_singularity.sh`: Code used to generate the Singularity recipe file. This script uses [`neurodocker`](https://github.com/kaczmarj/neurodocker), so running it will require that you have Python and `neurodocker` installed locally
 
 `code/`  
 
@@ -135,4 +135,4 @@ This code will generate all of the "normal" ANTsLongitudinalCorticalThickness.sh
 
 `data/`
 
-* `segment_mni.sh`: Code used to generate an ANTs-ready group template from the original MNI152 ICBM nonlinear asymmetric 2009c atlas. The MNI atlas does not come with the required tissue priors that ANTs expects (CSF, cortical gray matter, white matter, subcortical gray matter, brainstem, cerebellum), so this script uses a combination of ANTs tools and the provided atlas files to create them. It should not need to be re-run as the output files are available on [figshare]("https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46").
+* `segment_mni.sh`: Code used to generate an ANTs-ready group template from the original MNI152 ICBM nonlinear asymmetric 2009c atlas. The MNI atlas does not come with the required tissue priors that ANTs expects (CSF, cortical gray matter, white matter, subcortical gray matter, brainstem, cerebellum), so this script uses a combination of ANTs tools and the provided atlas files to create them. It should not need to be re-run as the output files are available on [figshare](https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46).
