@@ -251,20 +251,17 @@ for subject in "${SUBJECTS[@]}"; do
         warp_dir=${OUTPUT_DIR}/${anat}_${suff}
         warp=${warp_dir}/${anat}TemplateToSubject0Warp.nii.gz
 
-        # convert displacement field into vector images and warp to template
-        ConvertImage 3 ${warp} ${warp/.nii.gz/} 10
-        for j in xvec yvec zvec; do
-            antsApplyTransforms                                               \
-                -d 3 -v 1                                                     \
-                -r ${TEMP_DIR}/template.nii.gz                                \
-                -i ${warp/.nii.gz/}${j}.nii.gz                                \
-                -o ${warp/.nii.gz/}${j}.nii.gz                                \
-                -t ${sst_to_group_mat}
-        done
+        # move SST --> timepoints non-linear warp into group template space
+        # by default, it is in SST space
+        antsApplyTransforms                                                   \
+            -d 3 -e 1 -v 1                                                    \
+            -r ${TEMP_DIR}/template.nii.gz                                    \
+            -i ${warp}                                                        \
+            -o ${warp/.nii.gz/_tempspace.nii.gz}                              \
+            -t ${sst_to_group_mat}
 
-        # convert vectors into displacement field and combine nonlinear warps
-        ConvertImage 3 ${warp/.nii.gz/} ${warp/.nii.gz/_tempspace.nii.gz} 9
-        rm ${warp/.nii.gz/}{x,y,z}vec.nii.gz
+        # combine the SST --> visit and template --> SST non-linear warps
+        # they should both be in template space at this point
         combo_warp=${warp_dir}/${anat}_nonlinearwarps.nii.gz
         antsApplyTransforms                                                   \
             -d 3 -v 1                                                         \
