@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
-
-# This script will generate a Singularity recipe file that can be built with:
 #
-#     $ sudo singularity build antslct.simg Singularity
+# Description:
 #
-# and then used to run the ANTs longitudinal cortical thickness pipeline.
+#     This script will generate a Singularity recipe that can be built with:
+#
+#         $ sudo singularity build antslct.simg Singularity
+#
+#     and then used to run the ANTs longitudinal cortical thickness pipeline.
+#     This script requires Docker and assumes it is accessible from the command
+#     line.
+#
+# Usage:
+#
+#     bash generate_singularity.sh
 
 read -r -d '' ENTRYPOINT << EOM
 #!/bin/bash
