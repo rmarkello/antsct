@@ -5,57 +5,68 @@ function Usage {
 
 Description:
 
-    antslct runs ANTs' longtiudinalCorticalThicknessPipeline.sh on data
+    antslct.sh runs ANTs' longitudinalCorticalThicknessPipeline.sh on data
     organized in BIDS format (see bids.neuroimaging.io for more information).
     Once complete, it uses the output warp files to generate Jacobian
     determinant images.
 
     This script assumes that each provided subject has AT LEAST one T1w
     anatomical image; more images can be provided (either longitudinally or
-    multimodally) and will be utilized in processing (see
-    https://github.com/ANTsX/ANTs/ for more info).
+    multimodally) and can be utilized in processing (see
+    https://github.com/ANTsX/ANTs/ for more info on the specifics).
 
-    Note if multimodal images are provided, they must be present for every
-    session (assuming there are also multiple sessions) for them to be used.
-    This script only does minor checks for this, and tends to be more
-    conservative (i.e., not including a modality if it thinks it isn't present
-    across all sessions).
+    Note if multimodal images are provided and their use is desired (see the -m
+    option, below) they must be present for every session (assuming there are
+    also multiple sessions). This script only does minor checks for this, and
+    tends to be more conservative (i.e., not including a modality if it thinks
+    it isn't present across all sessions).
 
     This will output all the relevant files AND create an fmriprep-style report
     for visually inspecting the nonlinear registration and segementation. This
-    will be saved as sub-XXX.html in the subject output directory.
+    will be saved as an html file in the subject output directory.
 
 Usage:
 
-    $ docker_opts="--rm -v /path/to/data:/data:ro -v /path/to/output:/output"
-    $ docker run \${docker_opts} antslct -s sub-001
-
-        OR
+    You must bind the BIDS directory the the /data directory of the Singularity
+    image and bind an output directory to the /output directory (or other, as
+    specified via the -o option), as in:
 
     $ singularity_opts="-B /path/to/data:/data:ro -B /path/to/output:/output"
-    $ singularity run \${singularity_opts} antslct.simg -s sub-001
+    $ singularity run ${singularity_opts} antslct.simg -s sub-001
 
 Required arguments:
 
-    -s: subject directory       Subject directory, accessible in /data,
-                                organized in BIDS format. If more than one
-                                subject is supplied (by calling -s multiple
-                                times) the pipeline will iterate over subjects
-                                and be run on each *serially*.
+    -s: subject id              BIDS-style subject ID, accessible in /data. If
+                                more than one subject is supplied (by calling
+                                -s multiple times) the pipeline will iterate
+                                over subjects and be run on each *serially*.
 
  Optional arguments:
 
     -o: output directory        Output directory. Assumes /output by default,
                                 but alternative can be specified. Either way,
                                 make sure you bind something to this or else
-                                your data won't be saved!
+                                your data won't be saved (see Usage, above).
+
     -c: number of cpu cores     Determines how many CPU cores to try and use
                                 with PEXEC (parallel execution on localhost).
-                                In order to maximize speed, this program will
-                                check to see the number of available cores and
-                                set ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS equal
-                                to # available cores / the arugment provided
-                                here (to a minimum of 1). Default: 2
+                                If >1 make sure that there is sufficient RAM to
+                                run multiple antsRegistration processes
+                                simultaneously. Default: 1
+
+    -t: number of threads       Determines the value of the environmental
+                                variable ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS
+                                used in ANTs registration tools. If set to 1
+                                then registration process should be replicable
+                                across re-instantiations. Default: 1
+
+    -m                          Whether to allow the use of non-T1w MRI images
+                                in data processing pipeline. These images will
+                                first be linearly registerd to the T1w MRI for
+                                each session and then supplied to the ANTs
+                                pipeline. The pipeline will only consider non-
+                                T1w images that are present for every session.
+                                Default: False
 
 USAGE
     exit 0
@@ -66,15 +77,17 @@ export TEMP_DIR=/opt/data/mni_template               # MNI152 2009c with priors
 export MALF_DIR=/opt/data/miccai                     # Mindboggle brains
 export OUT_DIR=/output                               # default output directory
 MODALITIES=( T2w PD FLAIR echo-1_PDT2 echo-2_PDT2 )  # possible non-T1w anats
-CORES=2                                              # default number of CPUs
+CORES=1                                              # default # of CPUs
+THREADS=1                                            # default # of threads
 SUBJECTS=()
+NO_OTHER_MODALITIES=1
 
 # get arguments
-if [[ $# -lt 2 ]]; then
+if [[ $# -lt 1 ]]; then
     Usage >&2
     exit 1
 else
-    while getopts "c:h:o:s:" OPT; do
+    while getopts "c:hmo:s:t:" OPT; do
         case $OPT in
                 c)
             CORES=$OPTARG
@@ -83,12 +96,17 @@ else
             Usage >&2
             exit 0
             ;;
+                m)
+            NO_OTHER_MODALITIES=0
+            ;;
                 o)
             OUT_DIR=$OPTARG
             ;;
                 s)
             SUBJECTS+=("$OPTARG")
             ;;
+                t)
+            THREADS=$OPTARG
         esac
     done
 fi
@@ -96,21 +114,10 @@ fi
 # make sure at least one subject was provided
 if [ ${#SUBJECTS[@]} -eq 0 ]; then
     echo "++ ERROR: Need to provide at least one subject directory to process."
-    Usage >&2
     exit 1
 fi
 
-# we'll multithread registration based on the # of available CPU cores and how
-# much we want to parallelize the data (see argument -c)
-# first, check if we're using SBATCH and get the number of available cores
-# otherwise, use nproc
-if [ ! -z "${SLURM_NTASKS}" ]; then
-    TOT_CORES=$SLURM_NTASKS; else
-    TOT_CORES=$( nproc )
-fi
-
 # set the ITK GLOBAL THREADS for multithreading of antsRegistration
-THREADS=$( echo "${TOT_CORES}/${CORES}" | bc )
 if [ ${THREADS} -lt 1 ]; then THREADS=1; fi
 export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=${THREADS}
 
@@ -122,7 +129,9 @@ for subject in "${SUBJECTS[@]}"; do
     SUB=${subject/sub-/}
 
     # make sure subject directory exists
-    if [ ! -d ${SUBJ_DIR} ]; then echo "${SUBJ_DIR} doesn't exist."; exit 1; fi
+    if [ ! -d "${SUBJ_DIR}" ]; then
+        echo "${SUBJ_DIR} doesn't exist. Skipping for now..."; continue
+    fi
 
     # determine where anatomical data lives (either one session or multiple)
     sessions=${SUBJ_DIR}/anat
@@ -152,6 +161,9 @@ for subject in "${SUBJECTS[@]}"; do
         # copy T1w anatomical to "coreg" directory and add to inputs for LCT
         cp -v ${fixed} ${ALIGN_DIR}
         long_inputs+=("${ALIGN_DIR}/$( basename ${fixed} )")
+
+        # if not supposed to use other modalities just skip this for-loop
+        if [ "${NO_OTHER_MODALITIES}" -eq 1 ]; then continue; fi
 
         # iterate through other modalities, appending to inputs for LCT, and
         # register to T1w image for given session
@@ -244,15 +256,26 @@ for subject in "${SUBJECTS[@]}"; do
 
     # template --> SST warp to combine with SST --> visit warp
     group_to_sst_war=${sst_dir}/T_templateTemplateToSubject0Warp.nii.gz
+    sst_to_group_war=${sst_dir}/T_templateSubjectToTemplate1Warp.nii.gz
 
     for index in ${!anatomicals[*]}; do
         # get input files and whatnot
         anat=${anatomicals[$index]}; suff=${suffixes[$index]}
         warp_dir=${OUTPUT_DIR}/${anat}_${suff}
         warp=${warp_dir}/${anat}TemplateToSubject0Warp.nii.gz
+        invwarp=${warp_dir}/${anat}SubjectToTemplate1Warp.nii.gz
+        combo_warp=${warp_dir}/${anat}_nonlinearwarps.nii.gz
+        jacobian=${OUTPUT_DIR}/${anat}_jacobian.nii.gz
+        invjacobian=${OUTPUT_DIR}/${anat}_invjacobian.nii.gz
 
-        # move SST --> timepoints non-linear warp into group template space
-        # by default, it is in SST space
+        # create ouput jacobian determinant image (log and geometric)
+        # these will be images where a POSITIVE value indicates relative
+        # subject atrophy, and a NEGATIVE value indicates relative subject
+        # expansion as compared to the TEMPLATE BRAIN. images will be in
+        # TEMPLATE SPACE, and thus comparable across individuals
+
+        # first move the SST --> individual timepoint non-linear warps into
+        # group template space; by default it is in SST space
         antsApplyTransforms                                                   \
             -d 3 -e 1 -v 1                                                    \
             -r ${TEMP_DIR}/template.nii.gz                                    \
@@ -260,9 +283,8 @@ for subject in "${SUBJECTS[@]}"; do
             -o ${warp/.nii.gz/_tempspace.nii.gz}                              \
             -t ${sst_to_group_mat}
 
-        # combine the SST --> visit and template --> SST non-linear warps
-        # they should both be in template space at this point
-        combo_warp=${warp_dir}/${anat}_nonlinearwarps.nii.gz
+        # then combine the SST --> visit and template --> SST non-linear warps
+        # they should both be in group template space at this point
         antsApplyTransforms                                                   \
             -d 3 -v 1                                                         \
             -r ${TEMP_DIR}/template.nii.gz                                    \
@@ -270,13 +292,32 @@ for subject in "${SUBJECTS[@]}"; do
             -t ${warp/.nii.gz/_tempspace.nii.gz}                              \
             -t ${group_to_sst_war}
 
-        # create ouput jacobian determinant image (log and geometric)
-        # these will be images where a POSITIVE value indicates relative
-        # subject atrophy, and a NEGATIVE value indicates relative subject
-        # expansion as compared to the TEMPLATE BRAIN. images will be in
-        # TEMPLATE SPACE, and thus comparable across individuals
-        jacobian=${OUTPUT_DIR}/${anat}_jacobian.nii.gz
+        # finally, actually generate the jacobian image
         CreateJacobianDeterminantImage 3 ${combo_warp} ${jacobian} 1 1
+        rm -fr ${combo_warp} ${warp/.nii.gz/_tempspace.nii.gz}
+
+        # now do the same thing as above with the inverse warps to create the
+        # "inverse" jacobian (i.e., where NEGATIVE values indicate relative
+        # subject atrophy and POSITIVE values indicate relative subject
+        # expansion)
+
+        # this should be ALMOST the same as the above image but with its signs
+        # reverse; however, due to the inability to precisely invert non-linear
+        # warps there will be some (potentially appreciable) differences
+        antsApplyTransforms                                                   \
+            -d 3 -e 1 -v 1                                                    \
+            -r ${TEMP_DIR}/template.nii.gz                                    \
+            -i ${invwarp}                                                     \
+            -o ${invwarp/.nii.gz/_tempspace.nii.gz}                           \
+            -t ${sst_to_group_mat}
+        antsApplyTransforms                                                   \
+            -d 3 -v 1                                                         \
+            -r ${TEMP_DIR}/template.nii.gz                                    \
+            -o [${combo_warp},1]                                              \
+            -t ${invwarp/.nii.gz/_tempspace.nii.gz}                           \
+            -t ${sst_to_group_war}
+        CreateJacobianDeterminantImage 3 ${combo_warp} ${invjacobian} 1 1
+        rm -f ${combo_warp} ${invwarp/.nii.gz/_tempspace.nii.gz}
 
         # let's also drag along the cortical thickness to group space
         antsApplyTransforms                                                   \
@@ -288,8 +329,9 @@ for subject in "${SUBJECTS[@]}"; do
 
         # and finally, copy out the composite warp files and brain segmentation
         # any other files can be manually pulled from the session directories
+        # but these are quite useful and it would be nice to have them...
         cp ${warp_dir}/${anat}SubjectToGroupTemplateWarp.nii.gz \
-           ${OUTPUT_DIR}/${anat}_subjectotemplatewarp.nii.gz
+           ${OUTPUT_DIR}/${anat}_subjecttotemplatewarp.nii.gz
         cp ${warp_dir}/${anat}GroupTemplateToSubjectWarp.nii.gz \
            ${OUTPUT_DIR}/${anat}_templatetosubjectwarp.nii.gz
         cp ${warp_dir}/${anat}BrainSegmentation.nii.gz \

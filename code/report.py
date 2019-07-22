@@ -207,7 +207,7 @@ def make_visit(visit_dir, sst_dir, out_dir):
     """
 
     base = '_'.join(visit_dir.name.split('_')[:-1])
-    ses = re.search('ses-(\d+)', base).group()
+    ses = re.search(r'ses-(\d+)', base).group()
 
     T1w = visit_dir / '..' / 'coreg' / f'{base}.nii.gz'
     T1w_mask = visit_dir / f'{base}BrainExtractionMask.nii.gz'

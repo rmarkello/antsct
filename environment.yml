@@ -2,6 +2,7 @@ name: antslct
 channels:
     - conda-forge
 dependencies:
+    - python=3.6.3
     - click=6.7
     - funcsigs=1.0.2
     - future=0.16.0
@@ -12,6 +13,7 @@ dependencies:
     - numpy=1.14.0
     - packaging=16.8
     - pandas=0.21.0
+    - pip=19.1.1
     - prov=1.5.1
     - pydot=1.2.3
     - pydotplus=2.0.2
