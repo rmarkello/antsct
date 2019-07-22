@@ -16,15 +16,14 @@
 
 read -r -d '' ENTRYPOINT << EOM
 #!/bin/bash
-. /opt/freesurfer/FreeSurferEnv.sh
 /opt/antslct.sh "\${@}"
 EOM
 
-ants_ver="30eabeb002818ce999e2d368920435c457456d47"
 data="https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46"
 
 generate_singularity() {
-docker run --rm kaczmarj/neurodocker:0.4.0 generate singularity               \
+singularity --quiet exec docker://kaczmarj/neurodocker:0.4.0                  \
+    /usr/bin/neurodocker generate singularity                                 \
     --base ubuntu:18.04                                                       \
     --pkg-manager apt                                                         \
     --install bc wget                                                         \
@@ -35,7 +34,7 @@ docker run --rm kaczmarj/neurodocker:0.4.0 generate singularity               \
       create_env=antslct                                                      \
       yaml_file=/opt/environment.yml                                          \
       activate=true                                                           \
-    --ants version=${ants_ver} method=source install_path="/opt/ants"         \
+    --ants version=2.2.0 install_path="/opt/ants/bin"                         \
     --copy code/antslct.sh /opt                                               \
     --copy code/report.py /opt                                                \
     --copy code/report.tpl /opt                                               \
@@ -48,3 +47,8 @@ docker run --rm kaczmarj/neurodocker:0.4.0 generate singularity               \
 }
 
 generate_singularity > Singularity
+
+printf "\nSingularity recipe file created and saved to:\n\n"
+printf "    $PWD/Singularity\n\n"
+printf "To generate a Singularity container from this recipe simply run:\n\n"
+printf "    $ sudo singularity build antslct.simg $PWD/Singularity\n\n"
