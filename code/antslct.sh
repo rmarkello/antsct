@@ -72,7 +72,9 @@ USAGE
     exit 0
 }
 
-export ANTSPATH=/opt/ants/                           # path to ANTS directory
+if [ -z ${ANTSPATH} ]; then 
+    export ANTSPATH=/opt/ants/bin
+fi
 export TEMP_DIR=/opt/data/mni_template               # MNI152 2009c with priors
 export MALF_DIR=/opt/data/miccai                     # Mindboggle brains
 export OUT_DIR=/output                               # default output directory
