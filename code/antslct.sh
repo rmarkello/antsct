@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -e
+set -u
+
 function Usage {
     cat << USAGE
 
@@ -32,7 +35,7 @@ Usage:
     specified via the -o option), as in:
 
     $ singularity_opts="-B /path/to/data:/data:ro -B /path/to/output:/output"
-    $ singularity run ${singularity_opts} antslct.simg -s sub-001
+    $ singularity run \${singularity_opts} antslct.simg -s sub-001
 
 Required arguments:
 
@@ -72,11 +75,13 @@ USAGE
     exit 0
 }
 
-if [ -z ${ANTSPATH} ]; then 
-    export ANTSPATH=/opt/ants/bin
+if [ -z "${ANTSPATH}" ]; then
+    export ANTSPATH=/opt/ants/bin/
+else
+    export ANTSPATH=${ANTSPATH}/
 fi
-export TEMP_DIR=/opt/data/mni_template               # MNI152 2009c with priors
-export MALF_DIR=/opt/data/miccai                     # Mindboggle brains
+export TEMP_DIR=/opt/data/mni_template/              # MNI152 2009c with priors
+export MALF_DIR=/opt/data/miccai/                    # Mindboggle brains
 export OUT_DIR=/output                               # default output directory
 MODALITIES=( T2w PD FLAIR echo-1_PDT2 echo-2_PDT2 )  # possible non-T1w anats
 CORES=1                                              # default # of CPUs
