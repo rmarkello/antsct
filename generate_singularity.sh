@@ -22,7 +22,7 @@ EOM
 data="https://ndownloader.figshare.com/files/10454170?private_link=5d9349701c771e8d8d46"
 
 generate_singularity() {
-singularity --quiet exec docker://kaczmarj/neurodocker:0.4.0                  \
+singularity --quiet exec docker://kaczmarj/neurodocker:0.5.0                  \
     /usr/bin/neurodocker generate singularity                                 \
     --base ubuntu:18.04                                                       \
     --pkg-manager apt                                                         \
@@ -34,7 +34,7 @@ singularity --quiet exec docker://kaczmarj/neurodocker:0.4.0                  \
       create_env=antslct                                                      \
       yaml_file=/opt/environment.yml                                          \
       activate=true                                                           \
-    --ants version=2.2.0 install_path="/opt/ants/bin"                         \
+    --ants version=2.3.1 install_path="/opt/ants/bin"                         \
     --copy code/antslct.sh /opt                                               \
     --copy code/report.py /opt                                                \
     --copy code/report.tpl /opt                                               \
