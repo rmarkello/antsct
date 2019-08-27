@@ -85,7 +85,7 @@ Usage:
     specified via the -o option), as in:
 
     $ singularity_opts="-B /path/to/data:/data:ro -B /path/to/output:/output"
-    $ singularity run  antslct.simg -s sub-001
+    $ singularity run ${singularity_opts} antslct.simg -s sub-001
 
 Required arguments:
 

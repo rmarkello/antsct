@@ -218,14 +218,17 @@ for subject in "${SUBJECTS[@]}"; do
     done
 
     # get atlases and labels for Joint Label Fusion
-    atlases=''
+    ATLASES=''
     for lab in `ls ${MALF_DIR}/*labels.nii.gz`; do
         atlas=$( echo $lab | cut -d '_' -f1,2 )_BrainCerebellum.nii.gz
-        atlases="${atlases} -a ${atlas} -l ${lab}"
+        ATLASES="${ATLASES} -a ${atlas} -l ${lab}"
     done
 
     # get number of modalities based on number of T1ws and number of inputs
-    num_mod=$( echo "${#long_inputs[@]}/${#anatomicals[@]}" | bc )
+    NUM_MOD=$( echo "${#long_inputs[@]}/${#anatomicals[@]}" | bc )
+
+    # determine whether to run serially or with pexec
+    if [ "${CORES}" -gt 1 ]; then CONTROL=2; else CONTROL=1; fi
 
     # run longitudinal cortical thickness pipeline using all modalities
     # this can take a couple of day, so...do something else for a while?
@@ -236,19 +239,17 @@ for subject in "${SUBJECTS[@]}"; do
                 -p ${TEMP_DIR}/prior%d.nii.gz                                 \
                 -t ${TEMP_DIR}/template_brain.nii.gz                          \
                 -f ${TEMP_DIR}/template_brain_registration_mask.nii.gz        \
-                -g 1 -c 2 -j ${CORES} -q 0 -k ${num_mod}                      \
-                ${atlases}                                                    \
+                -g 1 -c ${CONTROL} -j ${CORES} -q 0 -k ${NUM_MOD}             \
+                ${ATLASES}                                                    \
                 -o ${OUTPUT_DIR}/sub-${SUB}_CT                                \
                 ${long_inputs[@]}"
 
     # save the command to a txt file for posterity and then run it
-    echo ${command} >> ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
+    echo ${command} > ${OUTPUT_DIR}/sub-${SUB}_antscommand.txt
     ${command}
 
     # if the command errored we don't want to continue (we likely can't!)
-    if [[ $? -ne 0 ]]; then
-        exit 1
-    fi
+    if [[ $? -ne 0 ]]; then exit 1; fi
 
     # now we need to create the Jacobian images
     # we only want the nonlinear warps, but we need the SST --> visit warp to
