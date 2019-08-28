@@ -228,7 +228,7 @@ for subject in "${SUBJECTS[@]}"; do
     NUM_MOD=$( echo "${#long_inputs[@]}/${#anatomicals[@]}" | bc )
 
     # determine whether to run serially or with pexec
-    if [ "${CORES}" -gt 1 ]; then CONTROL=2; else CONTROL=1; fi
+    if [ "${CORES}" -gt 1 ]; then CONTROL=2; else CONTROL=0; fi
 
     # run longitudinal cortical thickness pipeline using all modalities
     # this can take a couple of day, so...do something else for a while?
